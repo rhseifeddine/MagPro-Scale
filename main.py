@@ -410,23 +410,41 @@ class ScaleApp(MDApp):
             original_callback(req, res)
 
     def open_settings_dialog(self):
-        content_box = MDBoxLayout(orientation='vertical', size_hint_y=None, height=dp(400))
+        content_box = MDBoxLayout(orientation='vertical', size_hint_y=None, height=dp(480))
         scroll = MDScrollView()
         list_layout = MDList()
+
+        import webbrowser
+        header_app = OneLineIconListItem(text='Application', bg_color=(0.95, 0.95, 0.95, 1))
+        header_app.add_widget(IconLeftWidget(icon='cellphone-arrow-down'))
+        list_layout.add_widget(header_app)
+
+        item_update = TwoLineIconListItem(
+            text='Mise à jour',
+            secondary_text='Télécharger la nouvelle version',
+            on_release=lambda x: [self.dialog.dismiss(), webbrowser.open('https://rhseifeddine.github.io/MagPro-Scale/')]
+        )
+        item_update.add_widget(IconLeftWidget(icon='cloud-download'))
+        list_layout.add_widget(item_update)
+
         header_net = OneLineIconListItem(text='Configuration Réseau', bg_color=(0.95, 0.95, 0.95, 1))
         header_net.add_widget(IconLeftWidget(icon='lan'))
         list_layout.add_widget(header_net)
+        
         self.tf_wifi = MDTextField(text=self.wifi_ip, hint_text='IP WIFI', mode='rectangle')
         item_wifi = MDBoxLayout(padding=dp(20), size_hint_y=None, height=dp(80))
         item_wifi.add_widget(self.tf_wifi)
         list_layout.add_widget(item_wifi)
+        
         self.tf_eth = MDTextField(text=self.ethernet_ip, hint_text='IP ETHERNET', mode='rectangle')
         item_eth = MDBoxLayout(padding=dp(20), size_hint_y=None, height=dp(80))
         item_eth.add_widget(self.tf_eth)
         list_layout.add_widget(item_eth)
+        
         header_print = OneLineIconListItem(text='Configuration Étiquette', bg_color=(0.95, 0.95, 0.95, 1))
         header_print.add_widget(IconLeftWidget(icon='printer-settings'))
         list_layout.add_widget(header_print)
+        
         size_box = MDBoxLayout(orientation='horizontal', spacing=dp(10), padding=dp(20), size_hint_y=None, height=dp(60), pos_hint={'center_x': 0.5})
 
         def set_size(inst):
@@ -434,6 +452,7 @@ class ScaleApp(MDApp):
             self.show_alert('Info', f'Taille définie: {self.sticker_size}')
             self.dialog.dismiss()
             self.open_settings_dialog()
+            
         current_size = self.sticker_size
         for s in ['40x20', '45x35', '60x40']:
             if s == current_size:
@@ -443,6 +462,7 @@ class ScaleApp(MDApp):
             btn.bind(on_release=set_size)
             size_box.add_widget(btn)
         list_layout.add_widget(size_box)
+        
         scroll.add_widget(list_layout)
         content_box.add_widget(scroll)
 
@@ -459,6 +479,7 @@ class ScaleApp(MDApp):
             if self.dialog:
                 self.dialog.dismiss()
             self.show_alert('Succès', 'Paramètres enregistrés')
+            
         self.dialog = MDDialog(title='Paramètres', type='custom', content_cls=content_box, buttons=[MDFlatButton(text='ANNULER', on_release=lambda x: self.dialog.dismiss()), MDRaisedButton(text='SAUVEGARDER', md_bg_color=(0, 0.7, 0, 1), on_release=save)], size_hint=(0.9, 0.8))
         self.dialog.open()
 
