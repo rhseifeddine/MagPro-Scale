@@ -422,7 +422,7 @@ class ScaleApp(MDApp):
         item_update = TwoLineIconListItem(
             text='Mise à jour',
             secondary_text='Télécharger la nouvelle version',
-            on_release=lambda x: [self.dialog.dismiss(), webbrowser.open('https://rhseifeddine.github.io/MagPro-Scale/')]
+            on_release=lambda x: [self.dialog.dismiss(), webbrowser.open('https://magpro-officiel.github.io/scale/')]
         )
         item_update.add_widget(IconLeftWidget(icon='cloud-download'))
         list_layout.add_widget(item_update)
