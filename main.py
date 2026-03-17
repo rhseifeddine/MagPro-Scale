@@ -25,6 +25,7 @@ def log_msg(msg, level='INFO'):
         pass
 
 # ============================================
+
 def get_device_id_s():
     try:
         from kivy.utils import platform
@@ -81,6 +82,7 @@ except Exception as e:
     log_msg(f'Import Error: {traceback.format_exc()}', 'CRITICAL')
     sys.exit(1)
 # ============================================
+
 class SmartTextField(MDTextField):
 
     def __init__(self, **kwargs):
@@ -252,11 +254,26 @@ class ScaleApp(MDApp):
             pass
 
     def is_valid_ip(self, ip):
+        if not ip:
+            return False
+        import re
+        if re.search('[a-zA-Z]', ip):
+            return True
         try:
+            import socket
             socket.inet_aton(ip)
             return True
         except:
             return False
+
+    def api_base_for_ip(self, ip_string):
+        import re
+        if not ip_string:
+            return ''
+        if re.search('[a-zA-Z]', ip_string):
+            clean_host = ip_string.replace('https://', '').replace('http://', '').strip('/')
+            return f'https://{clean_host}'
+        return f'http://{ip_string}:{self.server_port}'
 
     def on_start(self):
         if platform == 'android':
@@ -293,16 +310,13 @@ class ScaleApp(MDApp):
     def on_keyboard_handler(self, window, key, *args):
         if key == 27:
             if self.sm.current == 'scale':
-                screen = self.root.get_screen('scale')        
+                screen = self.root.get_screen('scale')
                 if self.selected_product:
                     self.selected_product = None
                     screen.ids.bottom_nav.switch_tab('screen_products')
-                
-                return True 
-
+                return True
             elif self.sm.current == 'login':
                 return True
-        
         return False
 
     def start_heartbeat(self):
@@ -314,7 +328,7 @@ class ScaleApp(MDApp):
             self.is_connected = False
             return
         ip = self.available_ips[self.current_ip_index]
-        url = f'http://{ip}:{self.server_port}/api/products'
+        url = f'{self.api_base_for_ip(ip)}/api/products'
         UrlRequest(url, method='HEAD', on_success=lambda r, res: setattr(self, 'is_connected', True), on_failure=lambda r, e: setattr(self, 'is_connected', False), on_error=lambda r, e: setattr(self, 'is_connected', False), timeout=1.5)
 
     def check_license(self):
@@ -380,7 +394,7 @@ class ScaleApp(MDApp):
         if not self.available_ips:
             return None
         ip = self.available_ips[self.current_ip_index]
-        return f'http://{ip}:{self.server_port}{endpoint}'
+        return f'{self.api_base_for_ip(ip)}{endpoint}'
 
     def switch_ip_and_retry(self, endpoint, method, body, headers, success_callback, failure_callback, original_req=None):
         self.current_ip_index += 1
@@ -391,7 +405,7 @@ class ScaleApp(MDApp):
                 failure_callback(original_req, 'Connexion perdue')
             return
         new_ip = self.available_ips[self.current_ip_index]
-        url = f'http://{new_ip}:{self.server_port}{endpoint}'
+        url = f'{self.api_base_for_ip(new_ip)}{endpoint}'
         UrlRequest(url, req_body=body, req_headers=headers, method=method, on_success=lambda r, res: self._wrap_success(r, res, success_callback), on_error=lambda r, err: self.switch_ip_and_retry(endpoint, method, body, headers, success_callback, failure_callback, r), on_failure=lambda r, err: self.switch_ip_and_retry(endpoint, method, body, headers, success_callback, failure_callback, r), timeout=2)
 
     def send_request(self, endpoint, method='GET', body=None, headers=None, on_success=None, on_failure=None):
@@ -413,38 +427,27 @@ class ScaleApp(MDApp):
         content_box = MDBoxLayout(orientation='vertical', size_hint_y=None, height=dp(480))
         scroll = MDScrollView()
         list_layout = MDList()
-
         import webbrowser
         header_app = OneLineIconListItem(text='Application', bg_color=(0.95, 0.95, 0.95, 1))
         header_app.add_widget(IconLeftWidget(icon='cellphone-arrow-down'))
         list_layout.add_widget(header_app)
-
-        item_update = TwoLineIconListItem(
-            text='Mise à jour',
-            secondary_text='Télécharger la nouvelle version',
-            on_release=lambda x: [self.dialog.dismiss(), webbrowser.open('https://scale.magpro-soft.com/')]
-        )
+        item_update = TwoLineIconListItem(text='Mise à jour', secondary_text='Télécharger la nouvelle version', on_release=lambda x: [self.dialog.dismiss(), webbrowser.open('https://scale.magpro-soft.com/')])
         item_update.add_widget(IconLeftWidget(icon='cloud-download'))
         list_layout.add_widget(item_update)
-
         header_net = OneLineIconListItem(text='Configuration Réseau', bg_color=(0.95, 0.95, 0.95, 1))
         header_net.add_widget(IconLeftWidget(icon='lan'))
         list_layout.add_widget(header_net)
-        
         self.tf_wifi = MDTextField(text=self.wifi_ip, hint_text='IP WIFI', mode='rectangle')
         item_wifi = MDBoxLayout(padding=dp(20), size_hint_y=None, height=dp(80))
         item_wifi.add_widget(self.tf_wifi)
         list_layout.add_widget(item_wifi)
-        
         self.tf_eth = MDTextField(text=self.ethernet_ip, hint_text='IP ETHERNET', mode='rectangle')
         item_eth = MDBoxLayout(padding=dp(20), size_hint_y=None, height=dp(80))
         item_eth.add_widget(self.tf_eth)
         list_layout.add_widget(item_eth)
-        
         header_print = OneLineIconListItem(text='Configuration Étiquette', bg_color=(0.95, 0.95, 0.95, 1))
         header_print.add_widget(IconLeftWidget(icon='printer-settings'))
         list_layout.add_widget(header_print)
-        
         size_box = MDBoxLayout(orientation='horizontal', spacing=dp(10), padding=dp(20), size_hint_y=None, height=dp(60), pos_hint={'center_x': 0.5})
 
         def set_size(inst):
@@ -452,7 +455,6 @@ class ScaleApp(MDApp):
             self.show_alert('Info', f'Taille définie: {self.sticker_size}')
             self.dialog.dismiss()
             self.open_settings_dialog()
-            
         current_size = self.sticker_size
         for s in ['40x20', '45x35', '60x40']:
             if s == current_size:
@@ -462,7 +464,6 @@ class ScaleApp(MDApp):
             btn.bind(on_release=set_size)
             size_box.add_widget(btn)
         list_layout.add_widget(size_box)
-        
         scroll.add_widget(list_layout)
         content_box.add_widget(scroll)
 
@@ -479,7 +480,6 @@ class ScaleApp(MDApp):
             if self.dialog:
                 self.dialog.dismiss()
             self.show_alert('Succès', 'Paramètres enregistrés')
-            
         self.dialog = MDDialog(title='Paramètres', type='custom', content_cls=content_box, buttons=[MDFlatButton(text='ANNULER', on_release=lambda x: self.dialog.dismiss()), MDRaisedButton(text='SAUVEGARDER', md_bg_color=(0, 0.7, 0, 1), on_release=save)], size_hint=(0.9, 0.8))
         self.dialog.open()
 
@@ -528,6 +528,7 @@ class ScaleApp(MDApp):
         if not image_path_from_server:
             return ''
         try:
+            import os
             filename = os.path.basename(image_path_from_server.replace('\\', '/'))
             local_path = os.path.join(self.image_cache_dir, filename)
             if os.path.exists(local_path):
@@ -535,7 +536,7 @@ class ScaleApp(MDApp):
             if not self.available_ips:
                 return ''
             ip = self.available_ips[self.current_ip_index]
-            img_url = f'http://{ip}:{self.server_port}/api/images/{filename}'
+            img_url = f'{self.api_base_for_ip(ip)}/api/images/{filename}'
             UrlRequest(img_url, on_success=lambda r, res: open(local_path, 'wb').write(res))
             return img_url
         except:
